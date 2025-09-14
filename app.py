@@ -80,8 +80,15 @@ class SentimentAnalyzer:
     def __init__(self):
         self.model = None
         self.vectorizer = None
-        self.stop_words = set(stopwords.words('english'))
-        self.lemmatizer = WordNetLemmatizer()
+        try:
+            self.stop_words = set(stopwords.words('english'))
+        except:
+            # Fallback if NLTK data not available
+            self.stop_words = set(['i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', 'your', 'yours', 'yourself', 'yourselves', 'he', 'him', 'his', 'himself', 'she', 'her', 'hers', 'herself', 'it', 'its', 'itself', 'they', 'them', 'their', 'theirs', 'themselves', 'what', 'which', 'who', 'whom', 'this', 'that', 'these', 'those', 'am', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'having', 'do', 'does', 'did', 'doing', 'a', 'an', 'the', 'and', 'but', 'if', 'or', 'because', 'as', 'until', 'while', 'of', 'at', 'by', 'for', 'with', 'through', 'during', 'before', 'after', 'above', 'below', 'up', 'down', 'in', 'out', 'on', 'off', 'over', 'under', 'again', 'further', 'then', 'once'])
+        try:
+            self.lemmatizer = WordNetLemmatizer()
+        except:
+            self.lemmatizer = None
         
     def load_model(self, model_path="models/best_model.pkl", vectorizer_path="models/best_vectorizer.pkl"):
         """Load trained model and vectorizer"""
@@ -837,16 +844,21 @@ def show_model_performance():
         }
         st.table(pd.DataFrame(example_data))
 
-if __name__ == "__main__":
-    try:
-        # Download NLTK data if not present
-        nltk.data.find('tokenizers/punkt')
-        nltk.data.find('corpora/stopwords')
-        nltk.data.find('corpora/wordnet')
-    except LookupError:
-        st.info("📥 Downloading required language data...")
-        nltk.download('punkt', quiet=True)
-        nltk.download('stopwords', quiet=True)
-        nltk.download('wordnet', quiet=True)
+# Download NLTK data at module level to avoid repeated downloads
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt', quiet=True)
     
+try:
+    nltk.data.find('corpora/stopwords')
+except LookupError:
+    nltk.download('stopwords', quiet=True)
+    
+try:
+    nltk.data.find('corpora/wordnet')
+except LookupError:
+    nltk.download('wordnet', quiet=True)
+
+if __name__ == "__main__":
     main()
