@@ -189,6 +189,87 @@ def create_wordcloud(text, title, colormap='viridis'):
     
     return fig
 
+def train_quick_model():
+    """Train a quick lightweight model for immediate use"""
+    try:
+        with st.spinner("⚡ Training quick model (1-2 minutes)..."):
+            from simple_model import create_simple_models
+            ok = create_simple_models()
+            if ok:
+                st.success("✅ Quick model trained and saved!")
+                # Reload model into analyzer
+                if 'analyzer' in st.session_state:
+                    st.session_state.analyzer.load_model()
+            else:
+                st.error("❌ Quick model training failed.")
+                st.info("You can try Full Training or run training locally and commit the models/ folder.")
+    except Exception as e:
+        st.error(f"❌ Quick training failed: {e}")
+
+
+def train_models_automatically():
+    """Train models automatically within the web app"""
+    try:
+        with st.spinner("🔄 Training ML models... This may take 5-10 minutes."):
+            # Create progress tracking
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            
+            # Step 1: Load and preprocess data
+            status_text.text("📊 Loading and preprocessing data...")
+            progress_bar.progress(20)
+            
+            from data_preprocessing import IMDbDataProcessor
+            processor = IMDbDataProcessor()
+            processor.load_data()
+            processor.preprocess_data()
+            X_train, X_test, y_train, y_test = processor.prepare_for_modeling()
+            
+            # Step 2: Train models
+            status_text.text("🤖 Training multiple ML models...")
+            progress_bar.progress(40)
+            
+            from ml_models import SentimentModels
+            sentiment_models = SentimentModels()
+            sentiment_models.create_models()
+            
+            # Step 3: Train and evaluate
+            status_text.text("📈 Training and evaluating models...")
+            progress_bar.progress(70)
+            
+            results = sentiment_models.train_and_evaluate(X_train, X_test, y_train, y_test)
+            
+            # Step 4: Save models
+            status_text.text("💾 Saving trained models...")
+            progress_bar.progress(90)
+            
+            sentiment_models.save_models()
+            
+            # Complete
+            progress_bar.progress(100)
+            status_text.text("✅ Model training completed successfully!")
+            
+            st.success("🎉 Models trained and saved successfully!")
+            st.info("Please refresh the page to use the trained models.")
+            
+            # Show training results
+            st.markdown("### 📊 Training Results")
+            best_key, best_result = sentiment_models.find_best_model()
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                st.metric("Best Model", best_key.replace('_', ' ').title())
+            with col2:
+                st.metric("Accuracy", f"{best_result['accuracy']:.3f}")
+            with col3:
+                st.metric("F1-Score", f"{best_result['f1']:.3f}")
+            with col4:
+                st.metric("AUC", f"{best_result['auc']:.3f}")
+            
+    except Exception as e:
+        st.error(f"❌ Training failed: {str(e)}")
+        st.info("The training process requires significant computational resources. You may need to run this locally first.")
+
 def main():
     """Main Streamlit application"""
     
@@ -227,8 +308,14 @@ def main():
         if model_loaded:
             st.success("✅ Model loaded successfully!")
         else:
-            st.error("❌ Model not found. Please train the model first.")
-            st.info("Run: `python ml_models.py` to train models")
+            st.warning("⚠️ Full models not found.")
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("⚡ Quick Model", help="Train a fast model (1-2 minutes)"):
+                    train_quick_model()
+            with col2:
+                if st.button("🚀 Full Training", help="Train all models (5-10 minutes)"):
+                    train_models_automatically()
     
     # Page routing
     if page == "🏠 Home":
