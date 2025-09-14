@@ -1,0 +1,38 @@
+[global]
+
+# Global configurations
+developmentMode = false
+showWarningOnDirectExecution = false
+
+[server]
+
+# Server configurations  
+port = 8501
+address = "0.0.0.0"
+maxUploadSize = 200
+maxMessageSize = 200
+enableCORS = false
+enableXsrfProtection = true
+enableWebsocketCompression = false
+
+[browser]
+
+# Browser configurations
+serverAddress = "localhost"
+gatherUsageStats = false
+serverPort = 8501
+
+[theme]
+
+# UI theme
+primaryColor = "#1f77b4"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f0f2f6"
+textColor = "#262730"
+font = "sans serif"
+
+[logger]
+
+# Logging configurations
+level = "info"
+messageFormat = "%(asctime)s %(message)s"
