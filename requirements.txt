@@ -18,3 +18,12 @@ plotly>=5.0.0
 # Utilities
 beautifulsoup4>=4.10.0
 joblib>=1.1.0
+
+# Enhanced Data Analysis Features
+openpyxl>=3.1.0                    # Excel file support
+reportlab>=4.0.0                   # PDF report generation
+python-multipart>=0.0.6            # File upload handling
+streamlit-aggrid>=0.3.0            # Interactive data tables
+plotly-express>=0.4.1             # Enhanced plotting
+kaleido>=0.2.1                     # Static image export from plotly
+scikit-learn-extra>=0.3.0          # Additional ML algorithms

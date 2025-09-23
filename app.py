@@ -24,6 +24,19 @@ from collections import Counter
 import warnings
 warnings.filterwarnings('ignore')
 
+# Import new modules
+try:
+    from data_cleaning import DataCleaningTools
+    from file_operations import FileOperations
+    from visualization_utils import VisualizationTools
+    from report_generator import ReportGenerator
+    from anomaly_detection import AnomalyDetector
+    from interactive_explorer import InteractiveDataExplorer
+    NEW_MODULES_AVAILABLE = True
+except ImportError as e:
+    st.warning(f"Some enhanced features not available: {e}")
+    NEW_MODULES_AVAILABLE = False
+
 # Configure page
 st.set_page_config(
     page_title="IMDb Sentiment Analyzer",
@@ -80,6 +93,10 @@ class SentimentAnalyzer:
     def __init__(self):
         self.model = None
         self.vectorizer = None
+
+        # Ensure NLTK data is available
+        ensure_nltk_data()
+
         try:
             self.stop_words = set(stopwords.words('english'))
         except:
@@ -291,10 +308,22 @@ def main():
     # Sidebar
     with st.sidebar:
         st.markdown("## 🎛️ Navigation")
-        page = st.selectbox(
-            "Choose a page:",
-            ["🏠 Home", "📊 Dataset Analysis", "🤖 Single Prediction", "📝 Batch Analysis", "📈 Model Performance"]
-        )
+
+        # Main pages
+        main_pages = ["🏠 Home", "📊 Dataset Analysis", "🤖 Single Prediction", "📝 Batch Analysis", "📈 Model Performance"]
+
+        # Enhanced features (if available)
+        if NEW_MODULES_AVAILABLE:
+            main_pages.extend([
+                "🧹 Data Cleaning",
+                "📁 File Operations",
+                "📊 Advanced Visualizations",
+                "📋 Report Generation",
+                "🔍 Anomaly Detection",
+                "🔎 Interactive Explorer"
+            ])
+
+        page = st.selectbox("Choose a page:", main_pages)
         
         st.markdown("---")
         st.markdown("## ℹ️ About")
@@ -335,6 +364,18 @@ def main():
         show_batch_analysis()
     elif page == "📈 Model Performance":
         show_model_performance()
+    elif page == "🧹 Data Cleaning" and NEW_MODULES_AVAILABLE:
+        show_data_cleaning()
+    elif page == "📁 File Operations" and NEW_MODULES_AVAILABLE:
+        show_file_operations()
+    elif page == "📊 Advanced Visualizations" and NEW_MODULES_AVAILABLE:
+        show_advanced_visualizations()
+    elif page == "📋 Report Generation" and NEW_MODULES_AVAILABLE:
+        show_report_generation()
+    elif page == "🔍 Anomaly Detection" and NEW_MODULES_AVAILABLE:
+        show_anomaly_detection()
+    elif page == "🔎 Interactive Explorer" and NEW_MODULES_AVAILABLE:
+        show_interactive_explorer()
 
 def show_home_page():
     """Home page content"""
@@ -844,21 +885,630 @@ def show_model_performance():
         }
         st.table(pd.DataFrame(example_data))
 
-# Download NLTK data at module level to avoid repeated downloads
-try:
-    nltk.data.find('tokenizers/punkt')
-except LookupError:
-    nltk.download('punkt', quiet=True)
-    
-try:
-    nltk.data.find('corpora/stopwords')
-except LookupError:
-    nltk.download('stopwords', quiet=True)
-    
-try:
-    nltk.data.find('corpora/wordnet')
-except LookupError:
-    nltk.download('wordnet', quiet=True)
+def show_data_cleaning():
+    """Data cleaning page"""
+    st.markdown("## 🧹 Data Cleaning Tools")
+
+    if not NEW_MODULES_AVAILABLE:
+        st.error("❌ Data cleaning module not available!")
+        return
+
+    try:
+        cleaner = DataCleaningTools()
+
+        st.markdown("### 🛠️ Available Cleaning Operations")
+
+        # Operation selection
+        operations = st.multiselect(
+            "Select cleaning operations to apply:",
+            ["Remove Duplicates", "Handle Missing Values", "Text Normalization",
+             "Remove HTML Tags", "Remove Special Characters", "Remove Stopwords"]
+        )
+
+        # Data upload
+        st.markdown("### 📤 Upload Data for Cleaning")
+        uploaded_file = st.file_uploader(
+            "Choose a CSV file to clean",
+            type=['csv'],
+            help="CSV should contain text data for cleaning"
+        )
+
+        if uploaded_file is not None:
+            try:
+                df = pd.read_csv(uploaded_file)
+                st.success(f"✅ Loaded {len(df)} rows!")
+
+                # Show preview
+                st.markdown("### 👀 Data Preview")
+                st.dataframe(df.head())
+
+                # Apply cleaning operations
+                if st.button("🧹 Apply Cleaning Operations", type="primary") and operations:
+                    with st.spinner("Cleaning data..."):
+                        cleaned_df = cleaner.apply_operations(df, operations)
+
+                        # Store in session state
+                        st.session_state.cleaned_data = cleaned_df
+
+                        st.success("✅ Data cleaning completed!")
+
+                        # Show results
+                        st.markdown("### 📊 Cleaning Results")
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Original Rows", len(df))
+                        with col2:
+                            st.metric("Cleaned Rows", len(cleaned_df))
+                        with col3:
+                            st.metric("Rows Removed", len(df) - len(cleaned_df))
+
+                        # Download cleaned data
+                        csv = cleaned_df.to_csv(index=False)
+                        st.download_button(
+                            label="📥 Download Cleaned Data",
+                            data=csv,
+                            file_name="cleaned_data.csv",
+                            mime="text/csv"
+                        )
+
+            except Exception as e:
+                st.error(f"❌ Error processing file: {e}")
+
+    except Exception as e:
+        st.error(f"❌ Error initializing data cleaning tools: {e}")
+
+def show_file_operations():
+    """File operations page"""
+    st.markdown("## 📁 File Operations")
+
+    if not NEW_MODULES_AVAILABLE:
+        st.error("❌ File operations module not available!")
+        return
+
+    try:
+        file_ops = FileOperations()
+
+        st.markdown("### 📋 Available Operations")
+
+        operation = st.selectbox(
+            "Choose an operation:",
+            ["Merge CSV Files", "Split Large Files", "Convert File Formats",
+             "Data Validation", "File Statistics", "Backup Files"]
+        )
+
+        if operation == "Merge CSV Files":
+            st.markdown("### 🔗 Merge CSV Files")
+            uploaded_files = st.file_uploader(
+                "Upload CSV files to merge",
+                type=['csv'],
+                accept_multiple_files=True
+            )
+
+            if uploaded_files and len(uploaded_files) >= 2:
+                if st.button("🔗 Merge Files", type="primary"):
+                    with st.spinner("Merging files..."):
+                        merged_df = file_ops.merge_csv_files(uploaded_files)
+                        st.success(f"✅ Merged {len(uploaded_files)} files!")
+
+                        st.markdown("### 📊 Merged Data Preview")
+                        st.dataframe(merged_df.head())
+
+                        # Download merged file
+                        csv = merged_df.to_csv(index=False)
+                        st.download_button(
+                            label="📥 Download Merged File",
+                            data=csv,
+                            file_name="merged_data.csv",
+                            mime="text/csv"
+                        )
+
+        elif operation == "Split Large Files":
+            st.markdown("### ✂️ Split Large Files")
+            uploaded_file = st.file_uploader(
+                "Upload large CSV file to split",
+                type=['csv']
+            )
+
+            if uploaded_file is not None:
+                chunk_size = st.number_input("Chunk size (rows per file)", min_value=100, value=1000)
+
+                if st.button("✂️ Split File", type="primary"):
+                    with st.spinner("Splitting file..."):
+                        file_ops.split_large_file(uploaded_file, chunk_size)
+                        st.success("✅ File split completed!")
+
+        elif operation == "File Statistics":
+            st.markdown("### 📊 File Statistics")
+            uploaded_file = st.file_uploader(
+                "Upload file for statistics",
+                type=['csv', 'txt', 'json']
+            )
+
+            if uploaded_file is not None:
+                if st.button("📊 Generate Statistics", type="primary"):
+                    with st.spinner("Analyzing file..."):
+                        stats = file_ops.get_file_statistics(uploaded_file)
+
+                        st.markdown("### 📈 File Statistics")
+                        for key, value in stats.items():
+                            st.metric(key, value)
+
+    except Exception as e:
+        st.error(f"❌ Error in file operations: {e}")
+
+def show_advanced_visualizations():
+    """Advanced visualizations page"""
+    st.markdown("## 📊 Advanced Visualizations")
+
+    if not NEW_MODULES_AVAILABLE:
+        st.error("❌ Advanced visualizations module not available!")
+        return
+
+    try:
+        # Load dataset for visualization tools
+        dataset = load_dataset()
+        if dataset is not None:
+            viz_tools = VisualizationTools(dataset)
+        else:
+            st.warning("⚠️ Dataset not available for advanced visualizations.")
+            viz_tools = None
+
+        st.markdown("### 🎨 Visualization Types")
+
+        viz_type = st.selectbox(
+            "Choose visualization type:",
+            ["Interactive Scatter Plot", "3D Surface Plot", "Heatmap",
+             "Correlation Matrix", "Time Series Plot", "Custom Dashboard"]
+        )
+
+        # Data upload
+        uploaded_file = st.file_uploader(
+            "Upload CSV data for visualization",
+            type=['csv']
+        )
+
+        if uploaded_file is not None:
+            try:
+                df = pd.read_csv(uploaded_file)
+                st.success(f"✅ Loaded {len(df)} rows!")
+
+                if viz_type == "Interactive Scatter Plot":
+                    st.markdown("### 📈 Interactive Scatter Plot")
+
+                    # Get numeric columns for scatter plot
+                    numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+                    if len(numeric_cols) < 2:
+                        st.warning("⚠️ Need at least 2 numeric columns for scatter plot. Current numeric columns: " + ", ".join(numeric_cols))
+                    else:
+                        x_col = st.selectbox("X-axis column (numeric)", numeric_cols)
+                        y_col = st.selectbox("Y-axis column (numeric)", numeric_cols)
+                        color_col = st.selectbox("Color column (optional)", [None] + list(df.columns))
+
+                        if st.button("🎨 Generate Plot", type="primary"):
+                            try:
+                                fig = viz_tools.create_interactive_scatter(df, x_col, y_col, color_col)
+                                st.plotly_chart(fig, use_container_width=True)
+                            except ValueError as e:
+                                st.error(f"❌ {str(e)}")
+                                st.info("💡 **Tip**: Scatter plots require numeric data. For text data, try using Bar Chart or Pie Chart instead.")
+
+                elif viz_type == "Correlation Matrix":
+                    st.markdown("### 🔥 Correlation Matrix")
+                    numeric_cols = df.select_dtypes(include=[np.number]).columns
+
+                    if len(numeric_cols) > 1:
+                        if st.button("🔥 Generate Heatmap", type="primary"):
+                            fig = viz_tools.create_correlation_heatmap(df)
+                            st.plotly_chart(fig, use_container_width=True)
+                    else:
+                        st.warning("⚠️ Need at least 2 numeric columns for correlation matrix")
+
+                elif viz_type == "Custom Dashboard":
+                    st.markdown("### 📊 Custom Dashboard")
+                    if st.button("📊 Generate Dashboard", type="primary"):
+                        dashboard = viz_tools.create_custom_dashboard(df)
+                        st.plotly_chart(dashboard, use_container_width=True)
+
+            except Exception as e:
+                st.error(f"❌ Error processing file: {e}")
+
+    except Exception as e:
+        st.error(f"❌ Error initializing visualization tools: {e}")
+
+def show_report_generation():
+    """Report generation page"""
+    st.markdown("## 📋 Report Generation")
+
+    if not NEW_MODULES_AVAILABLE:
+        st.error("❌ Report generation module not available!")
+        return
+
+    try:
+        st.markdown("### 📄 Report Types")
+
+        report_type = st.selectbox(
+            "Choose report type:",
+            ["Data Analysis Report", "Model Performance Report", "Business Intelligence Report"]
+        )
+
+        # Data upload
+        uploaded_file = st.file_uploader(
+            "Upload data for report generation",
+            type=['csv']
+        )
+
+        if uploaded_file is not None:
+            try:
+                df = pd.read_csv(uploaded_file)
+                st.success(f"✅ Loaded {len(df)} rows!")
+
+                # Initialize report generator with the DataFrame
+                try:
+                    report_gen = ReportGenerator(df)
+                except Exception as e:
+                    st.error(f"❌ Error initializing report generator: {e}")
+                    return
+
+                # Report configuration
+                st.markdown("### ⚙️ Report Configuration")
+                report_title = st.text_input("Report Title", "Analysis Report")
+                include_charts = st.checkbox("Include Charts", value=True)
+                include_stats = st.checkbox("Include Statistics", value=True)
+
+                if st.button("📋 Generate Report", type="primary"):
+                    with st.spinner("Generating report..."):
+                        try:
+                            if report_type == "Data Analysis Report":
+                                # Generate Excel report for data analysis
+                                report_result = report_gen.generate_excel_report(
+                                    f"{report_title.lower().replace(' ', '_')}_report.xlsx",
+                                    include_charts
+                                )
+
+                                if report_result['success']:
+                                    st.success("✅ Excel report generated successfully!")
+
+                                    # Show report info
+                                    st.markdown("### 📊 Report Generated")
+                                    col1, col2 = st.columns(2)
+                                    with col1:
+                                        st.metric("File Size", f"{report_result['file_size'] / 1024:.1f} KB")
+                                    with col2:
+                                        st.metric("Sheets Created", len(report_result['sheets']))
+
+                                    # Download button
+                                    with open(report_result['filename'], 'rb') as f:
+                                        st.download_button(
+                                            label="📥 Download Excel Report",
+                                            data=f.read(),
+                                            file_name=report_result['filename'],
+                                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                        )
+                                else:
+                                    st.error(f"❌ Error generating report: {report_result['error']}")
+
+                            elif report_type == "Model Performance Report":
+                                # Generate PDF report for model performance
+                                report_result = report_gen.generate_pdf_report(
+                                    f"{report_title.lower().replace(' ', '_')}_report.pdf",
+                                    include_charts
+                                )
+
+                                if report_result['success']:
+                                    st.success("✅ PDF report generated successfully!")
+
+                                    # Show report info
+                                    st.markdown("### 📊 Report Generated")
+                                    col1, col2 = st.columns(2)
+                                    with col1:
+                                        st.metric("File Size", f"{report_result['file_size'] / 1024:.1f} KB")
+                                    with col2:
+                                        st.metric("Pages", report_result['pages'])
+
+                                    # Download button
+                                    with open(report_result['filename'], 'rb') as f:
+                                        st.download_button(
+                                            label="📥 Download PDF Report",
+                                            data=f.read(),
+                                            file_name=report_result['filename'],
+                                            mime="application/pdf"
+                                        )
+                                else:
+                                    st.error(f"❌ Error generating report: {report_result['error']}")
+
+                            else:  # Business Intelligence Report
+                                # Generate comprehensive report (both Excel and PDF)
+                                st.info("🔄 Generating comprehensive business intelligence report...")
+
+                                # Generate Excel report
+                                excel_result = report_gen.generate_excel_report(
+                                    f"{report_title.lower().replace(' ', '_')}_excel.xlsx",
+                                    include_charts
+                                )
+
+                                # Generate PDF report
+                                pdf_result = report_gen.generate_pdf_report(
+                                    f"{report_title.lower().replace(' ', '_')}_pdf.pdf",
+                                    include_charts
+                                )
+
+                                if excel_result['success'] and pdf_result['success']:
+                                    st.success("✅ Comprehensive report generated successfully!")
+
+                                    # Show report info
+                                    st.markdown("### 📊 Reports Generated")
+                                    col1, col2, col3 = st.columns(3)
+                                    with col1:
+                                        st.metric("Excel File", f"{excel_result['file_size'] / 1024:.1f} KB")
+                                    with col2:
+                                        st.metric("PDF File", f"{pdf_result['file_size'] / 1024:.1f} KB")
+                                    with col3:
+                                        st.metric("PDF Pages", pdf_result['pages'])
+
+                                    # Download buttons
+                                    col1, col2 = st.columns(2)
+                                    with col1:
+                                        with open(excel_result['filename'], 'rb') as f:
+                                            st.download_button(
+                                                label="📥 Download Excel Report",
+                                                data=f.read(),
+                                                file_name=excel_result['filename'],
+                                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                            )
+                                    with col2:
+                                        with open(pdf_result['filename'], 'rb') as f:
+                                            st.download_button(
+                                                label="📥 Download PDF Report",
+                                                data=f.read(),
+                                                file_name=pdf_result['filename'],
+                                                mime="application/pdf"
+                                            )
+                                else:
+                                    st.error("❌ Error generating reports:")
+                                    if not excel_result['success']:
+                                        st.error(f"Excel: {excel_result['error']}")
+                                    if not pdf_result['success']:
+                                        st.error(f"PDF: {pdf_result['error']}")
+
+                        except Exception as e:
+                            st.error(f"❌ Error during report generation: {e}")
+                            st.info("💡 **Tip**: Make sure your data is properly formatted and try again.")
+
+            except Exception as e:
+                st.error(f"❌ Error processing file: {e}")
+
+    except Exception as e:
+        st.error(f"❌ Error initializing report generator: {e}")
+
+def show_anomaly_detection():
+    """Anomaly detection page"""
+    st.markdown("## 🔍 Anomaly Detection")
+
+    if not NEW_MODULES_AVAILABLE:
+        st.error("❌ Anomaly detection module not available!")
+        return
+
+    try:
+        detector = AnomalyDetector()
+
+        st.markdown("### 🔎 Detection Methods")
+
+        method = st.selectbox(
+            "Choose detection method:",
+            ["Isolation Forest", "Local Outlier Factor", "One-Class SVM", "Statistical Methods"]
+        )
+
+        # Data upload
+        uploaded_file = st.file_uploader(
+            "Upload data for anomaly detection",
+            type=['csv']
+        )
+
+        if uploaded_file is not None:
+            try:
+                df = pd.read_csv(uploaded_file)
+                st.success(f"✅ Loaded {len(df)} rows!")
+
+                # Show preview
+                st.markdown("### 👀 Data Preview")
+                st.dataframe(df.head())
+
+                # Detection parameters
+                st.markdown("### ⚙️ Detection Parameters")
+                contamination = st.slider("Contamination (anomaly ratio)", 0.01, 0.5, 0.1)
+
+                if st.button("🔍 Detect Anomalies", type="primary"):
+                    with st.spinner("Detecting anomalies..."):
+                        try:
+                            # Map UI method names to actual detector methods
+                            if method == "Statistical Methods":
+                                results = detector.detect_outliers_statistical(df, method='iqr')
+                                anomalies = df.loc[results['outliers'].get('indices', [])]
+                            elif method == "Isolation Forest":
+                                results = detector.detect_outliers_ml(df, algorithm='isolation_forest')
+                                anomalies = df.loc[results['outliers'].get('indices', [])]
+                            elif method == "Local Outlier Factor":
+                                results = detector.detect_outliers_ml(df, algorithm='local_outlier_factor')
+                                anomalies = df.loc[results['outliers'].get('indices', [])]
+                            elif method == "One-Class SVM":
+                                results = detector.detect_outliers_ml(df, algorithm='one_class_svm')
+                                anomalies = df.loc[results['outliers'].get('indices', [])]
+                            else:
+                                st.error(f"❌ Unsupported detection method: {method}")
+                                st.stop()
+
+                            # Display results
+                            st.markdown("### 📊 Anomaly Detection Results")
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("Total Samples", len(df))
+                            with col2:
+                                st.metric("Normal Samples", len(df) - len(anomalies))
+                            with col3:
+                                st.metric("Anomalies Found", len(anomalies))
+
+                            # Show detailed results
+                            if 'summary' in results:
+                                st.markdown("#### 📈 Detection Summary")
+                                summary = results['summary']
+                                st.json(summary)
+
+                            # Show anomalies
+                            if len(anomalies) > 0:
+                                st.markdown("### 🚨 Detected Anomalies")
+                                st.dataframe(anomalies, use_container_width=True)
+
+                                # Download anomalies
+                                csv = anomalies.to_csv(index=False)
+                                st.download_button(
+                                    label="📥 Download Anomalies",
+                                    data=csv,
+                                    file_name="detected_anomalies.csv",
+                                    mime="text/csv"
+                                )
+                            else:
+                                st.success("✅ No anomalies detected!")
+
+                        except Exception as e:
+                            st.error(f"❌ Error during anomaly detection: {e}")
+                            st.info("💡 **Tip**: Make sure your data contains numeric columns for anomaly detection.")
+
+            except Exception as e:
+                st.error(f"❌ Error processing file: {e}")
+
+    except Exception as e:
+        st.error(f"❌ Error initializing anomaly detector: {e}")
+
+def show_interactive_explorer():
+    """Interactive data explorer page"""
+    st.markdown("## 🔎 Interactive Data Explorer")
+
+    if not NEW_MODULES_AVAILABLE:
+        st.error("❌ Interactive explorer module not available!")
+        return
+
+    st.markdown("### 🎛️ Explorer Controls")
+
+    # Data upload
+    uploaded_file = st.file_uploader(
+        "Upload data for exploration",
+        type=['csv']
+    )
+
+    if uploaded_file is not None:
+        try:
+            df = pd.read_csv(uploaded_file)
+            st.success(f"✅ Loaded {len(df)} rows!")
+
+            # Initialize explorer with the DataFrame
+            try:
+                explorer = InteractiveDataExplorer(df)
+            except Exception as e:
+                st.error(f"❌ Error initializing interactive explorer: {e}")
+                return
+
+            # Explorer interface
+            st.markdown("### 🔍 Data Explorer")
+
+            # Column selection
+            col1, col2 = st.columns(2)
+            with col1:
+                x_column = st.selectbox("X-axis column", df.columns)
+            with col2:
+                y_column = st.selectbox("Y-axis column", df.columns)
+
+            # Filter controls
+            st.markdown("### 🔧 Filters")
+            filter_column = st.selectbox("Filter column", [None] + list(df.columns))
+
+            if filter_column:
+                if df[filter_column].dtype in ['int64', 'float64']:
+                    min_val, max_val = st.slider(
+                        f"Filter {filter_column}",
+                        float(df[filter_column].min()),
+                        float(df[filter_column].max()),
+                        (float(df[filter_column].min()), float(df[filter_column].max()))
+                    )
+                    filtered_df = df[(df[filter_column] >= min_val) & (df[filter_column] <= max_val)]
+                else:
+                    filter_values = st.multiselect(
+                        f"Select {filter_column} values",
+                        df[filter_column].unique()
+                    )
+                    filtered_df = df[df[filter_column].isin(filter_values)]
+
+                st.metric("Filtered Rows", len(filtered_df))
+            else:
+                filtered_df = df
+
+            # Visualization
+            if st.button("📊 Explore Data", type="primary"):
+                with st.spinner("Creating visualization..."):
+                    # Create a simple scatter plot using plotly directly
+                    try:
+                        fig = px.scatter(
+                            filtered_df,
+                            x=x_column,
+                            y=y_column,
+                            title=f"{x_column} vs {y_column}"
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+                    except Exception as e:
+                        st.error(f"❌ Error creating visualization: {e}")
+
+            # Statistics
+            st.markdown("### 📈 Quick Statistics")
+            if st.button("📊 Show Statistics", type="primary"):
+                try:
+                    # Get basic statistics for the filtered data
+                    stats = {
+                        'shape': filtered_df.shape,
+                        'columns': filtered_df.columns.tolist(),
+                        'dtypes': filtered_df.dtypes.to_dict(),
+                        'null_counts': filtered_df.isnull().sum().to_dict(),
+                        'basic_stats': {}
+                    }
+
+                    # Add basic stats for numeric columns
+                    numeric_cols = filtered_df.select_dtypes(include=[np.number]).columns
+                    for col in numeric_cols:
+                        stats['basic_stats'][col] = {
+                            'mean': float(filtered_df[col].mean()),
+                            'median': float(filtered_df[col].median()),
+                            'std': float(filtered_df[col].std()),
+                            'min': float(filtered_df[col].min()),
+                            'max': float(filtered_df[col].max())
+                        }
+
+                    st.json(stats)
+                except Exception as e:
+                    st.error(f"❌ Error generating statistics: {e}")
+
+        except Exception as e:
+            st.error(f"❌ Error processing file: {e}")
+
+# NLTK data download function - called when needed to avoid import errors
+def ensure_nltk_data():
+    """Ensure NLTK data is available, download if missing"""
+    try:
+        nltk.data.find('tokenizers/punkt')
+    except LookupError:
+        print("Downloading NLTK punkt tokenizer...")
+        nltk.download('punkt', quiet=True)
+
+    try:
+        nltk.data.find('corpora/stopwords')
+    except LookupError:
+        print("Downloading NLTK stopwords...")
+        nltk.download('stopwords', quiet=True)
+
+    try:
+        nltk.data.find('corpora/wordnet')
+    except LookupError:
+        print("Downloading NLTK wordnet...")
+        nltk.download('wordnet', quiet=True)
+
+    print("✅ NLTK data ready!")
 
 if __name__ == "__main__":
     main()
